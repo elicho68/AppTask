@@ -19,23 +19,23 @@ class Tarea {
     this.recordatorio,
   });
 
-Map<String, dynamic> toMap({bool includeId = false}) {
-  final map = {
-    'titulo': titulo,
-    'descripcion': descripcion,
-    'completada': completada ? 1 : 0,
-    'fecha_creacion': fechaCreacion.toIso8601String(),
-    'fecha_limite': fechaLimite?.toIso8601String(),
-    'prioridad': prioridad,
-    'recordatorio': recordatorio?.toIso8601String(),
-  };
+  Map<String, dynamic> toMap({bool includeId = false}) {
+    final map = {
+      'titulo': titulo,
+      'descripcion': descripcion,
+      'completada': completada ? 1 : 0,
+      'fecha_creacion': fechaCreacion.toIso8601String(),
+      'fecha_limite': fechaLimite?.toIso8601String(),
+      'prioridad': prioridad,
+      'recordatorio': recordatorio?.toIso8601String(),
+    };
 
-  if (includeId) {
-    map['id'] = id;
+    if (includeId) {
+      map['id'] = id;
+    }
+
+    return map;
   }
-
-  return map;
-}
 
   static Tarea fromMap(Map<String, dynamic> map) {
     return Tarea(
@@ -43,16 +43,10 @@ Map<String, dynamic> toMap({bool includeId = false}) {
       titulo: map['titulo'],
       descripcion: map['descripcion'],
       completada: map['completada'] == 1,
-      fechaCreacion: map['fecha_creacion'] != null
-          ? DateTime.parse(map['fecha_creacion'])
-          : DateTime.now(),
-      fechaLimite: map['fecha_limite'] != null
-          ? DateTime.tryParse(map['fecha_limite'])
-          : null,
+      fechaCreacion: DateTime.tryParse(map['fecha_creacion'] ?? '') ?? DateTime.now(),
+      fechaLimite: map['fecha_limite'] != null ? DateTime.tryParse(map['fecha_limite']) : null,
       prioridad: map['prioridad'] ?? 'media',
-      recordatorio: map['recordatorio'] != null
-          ? DateTime.tryParse(map['recordatorio'])
-          : null,
+      recordatorio: map['recordatorio'] != null ? DateTime.tryParse(map['recordatorio']) : null,
     );
   }
 

@@ -16,31 +16,30 @@ class DBService {
 
     return await openDatabase(
       path,
-      version: 3, // ⬅️ subimos de versión
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
-  CREATE TABLE tareas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    titulo TEXT,
-    descripcion TEXT,
-    completada INTEGER,
-    fecha_creacion TEXT,
-    fecha_limite TEXT,
-    prioridad TEXT,
-    recordatorio TEXT
-  )
-''');
-
+          CREATE TABLE tareas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT,
+            descripcion TEXT,
+            completada INTEGER,
+            fecha_creacion TEXT,
+            fecha_limite TEXT,
+            prioridad TEXT,
+            recordatorio TEXT
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        // Por si alguna instalación antigua no tenía campos nuevos
         if (oldVersion < 2) {
-          // Agregamos las columnas nuevas si no existen
           await db.execute("ALTER TABLE tareas ADD COLUMN fecha_creacion TEXT");
           await db.execute("ALTER TABLE tareas ADD COLUMN fecha_limite TEXT");
         }
- if (oldVersion < 3) {
-      await db.execute("ALTER TABLE tareas ADD COLUMN prioridad TEXT DEFAULT 'media'");
-      await db.execute("ALTER TABLE tareas ADD COLUMN recordatorio TEXT");
+        if (oldVersion < 3) {
+          await db.execute("ALTER TABLE tareas ADD COLUMN prioridad TEXT DEFAULT 'media'");
+          await db.execute("ALTER TABLE tareas ADD COLUMN recordatorio TEXT");
         }
       },
     );

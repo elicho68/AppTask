@@ -1,36 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
-import 'package:permission_handler/permission_handler.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
-import 'screens/SplashScreen.dart';
 import 'services/tarea_dao.dart';
 import 'models/tarea.dart';
-
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation('America/Guatemala'));
+  await AwesomeNotifications().initialize(
+    null,
+    [
+      NotificationChannel(
+        channelKey: 'apptask_channel',
+        channelName: 'AppTask Recordatorios',
+        channelDescription: 'Notificaciones para tareas',
+        defaultColor: Colors.blue,
+        importance: NotificationImportance.High,
+        channelShowBadge: true,
+      )
+    ],
+    debug: true,
+  );
 
-  final status = await Permission.notification.status;
-  if (status.isDenied || status.isPermanentlyDenied) {
-    await Permission.notification.request();
-  }
-
-  const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-  const initSettings = InitializationSettings(android: androidSettings);
-  await flutterLocalNotificationsPlugin.initialize(initSettings);
-
-  runApp(const TaskApp());
+  runApp(const MyApp());
 }
 
-class TaskApp extends StatelessWidget {
-  const TaskApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +35,6 @@ class TaskApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: const Color(0xFF00357f),
-        scaffoldBackgroundColor: Colors.white,
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF00357f),
           foregroundColor: Colors.white,
@@ -52,7 +47,7 @@ class TaskApp extends StatelessWidget {
           bodyMedium: TextStyle(color: Colors.black87),
         ),
       ),
-      home: const SplashScreen(),
+      home: const HomeScreen(),
     );
   }
 }
@@ -97,10 +92,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void _mostrarFormularioNuevaTarea() {
     String titulo = '';
     String descripcion = '';
-    DateTime? fechaLimite;
-    String prioridad = 'media';
-    int recordatorioSeleccionado = 0;
     DateTime? recordatorio;
+    int recordatorioSeleccionado = 0;
 
     showDialog(
       context: context,
@@ -119,57 +112,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextField(
                     decoration: const InputDecoration(labelText: 'Descripción'),
                     onChanged: (value) => descripcion = value,
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final fechaSeleccionada = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 365)),
-                      );
-
-                      if (fechaSeleccionada != null) {
-                        final horaSeleccionada = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-
-                        if (horaSeleccionada != null) {
-                          final fechaConHora = DateTime(
-                            fechaSeleccionada.year,
-                            fechaSeleccionada.month,
-                            fechaSeleccionada.day,
-                            horaSeleccionada.hour,
-                            horaSeleccionada.minute,
-                          );
-
-                          setModalState(() {
-                            fechaLimite = fechaConHora;
-                          });
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_today),
-                    label: const Text('Seleccionar Fecha Límite'),
-                  ),
-                  if (fechaLimite != null)
-                    Text('Fecha límite: ${fechaLimite!.toLocal().toString().substring(0, 16)}'),
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: prioridad,
-                    items: ['alta', 'media', 'baja']
-                        .map((nivel) => DropdownMenuItem(
-                              value: nivel,
-                              child: Text('Prioridad: ${nivel.toUpperCase()}'),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setModalState(() {
-                        prioridad = value!;
-                      });
-                    },
                   ),
                   const SizedBox(height: 10),
                   const Text('Recordarme en:'),
@@ -194,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             firstDate: DateTime.now(),
                             lastDate: DateTime.now().add(const Duration(days: 365)),
                           );
-                          if (fecha != null) {
+                          if (fecha != null && context.mounted) {
                             final hora = await showTimePicker(
                               context: context,
                               initialTime: TimeOfDay.now(),
@@ -216,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                   }),
                   if (recordatorioSeleccionado == 4 && recordatorio != null)
-                    Text('Recordatorio: ${recordatorio!.toLocal().toString().substring(0, 16)}')
+                    Text('Recordatorio: ${recordatorio!.toLocal().toString().substring(0, 16)}'),
                 ],
               ),
             ),
@@ -252,8 +194,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       descripcion: descripcion,
                       completada: false,
                       fechaCreacion: ahora,
-                      fechaLimite: fechaLimite,
-                      prioridad: prioridad,
+                      prioridad: 'media',
+                      fechaLimite: null,
                       recordatorio: recordatorioFinal,
                     );
 
@@ -263,23 +205,24 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
 
                     if (recordatorioFinal != null && recordatorioFinal.isAfter(DateTime.now())) {
-                      await flutterLocalNotificationsPlugin.zonedSchedule(
-                        tareaConId.id,
-                        'Recordatorio: ${tareaConId.titulo}',
-                        tareaConId.descripcion,
-                        tz.TZDateTime.from(recordatorioFinal, tz.local),
-                        const NotificationDetails(
-                          android: AndroidNotificationDetails(
-                            'apptask_channel',
-                            'AppTask Recordatorios',
-                            channelDescription: 'Notificaciones para tus tareas pendientes',
-                            importance: Importance.max,
-                            priority: Priority.high,
-                          ),
+                      await AwesomeNotifications().createNotification(
+                        content: NotificationContent(
+                          id: tareaConId.id,
+                          channelKey: 'apptask_channel',
+                          title: 'Recordatorio: ${tareaConId.titulo}',
+                          body: tareaConId.descripcion,
+                          notificationLayout: NotificationLayout.Default,
                         ),
-                        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-                        matchDateTimeComponents: DateTimeComponents.dateAndTime,
-                        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime, // <== ESTA ES LA LÍNEA NUEVA
+                        schedule: NotificationCalendar(
+                          year: recordatorioFinal.year,
+                          month: recordatorioFinal.month,
+                          day: recordatorioFinal.day,
+                          hour: recordatorioFinal.hour,
+                          minute: recordatorioFinal.minute,
+                          second: 0,
+                          timeZone: 'America/Guatemala',
+                          preciseAlarm: true,
+                        ),
                       );
                     }
 
@@ -305,13 +248,6 @@ class _HomeScreenState extends State<HomeScreen> {
             SimpleDialogOption(
               onPressed: () {
                 Navigator.of(context).pop();
-                _mostrarFormularioEditarTarea(index);
-              },
-              child: const Text('Editar'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.of(context).pop();
                 _eliminarTarea(index);
               },
               child: const Text('Eliminar'),
@@ -324,10 +260,6 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
-  }
-
-  void _mostrarFormularioEditarTarea(int index) {
-    // Tu lógica de edición actual está bien
   }
 
   @override
@@ -360,7 +292,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 subtitle: Text(
                   '${tarea.descripcion}\n'
                   'Creada: ${tarea.fechaCreacion.toLocal().toString().substring(0, 16)}\n'
-                  '${tarea.fechaLimite != null ? 'Límite: ${tarea.fechaLimite!.toLocal().toString().substring(0, 16)}\n' : ''}'
                   'Prioridad: ${tarea.prioridad.toUpperCase()}\n'
                   '${tarea.recordatorio != null ? 'Recordatorio: ${tarea.recordatorio!.toLocal().toString().substring(0, 16)}' : ''}',
                 ),
