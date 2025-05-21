@@ -372,24 +372,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     });
 
                     if (recordatorioFinal != null) {
-                      await flutterLocalNotificationsPlugin.zonedSchedule(
-                        tareaConId.id,
-                        'Recordatorio: ${tareaConId.titulo}',
-                        tareaConId.descripcion,
-                        tz.TZDateTime.from(recordatorioFinal, tz.local),
-                        const NotificationDetails(
-                          android: AndroidNotificationDetails(
-                            'apptask_channel',
-                            'AppTask Recordatorios',
-                            importance: Importance.max,
-                            priority: Priority.high,
-                          ),
-                        ),
-                        androidAllowWhileIdle: true,
-                        uiLocalNotificationDateInterpretation:
-                            UILocalNotificationDateInterpretation.absoluteTime,
-                        matchDateTimeComponents: DateTimeComponents.dateAndTime,
-                      );
+await flutterLocalNotificationsPlugin.zonedSchedule(
+  tareaConId.id,
+  'Recordatorio: ${tareaConId.titulo}',
+  tareaConId.descripcion,
+  tz.TZDateTime.from(recordatorioFinal, tz.local),
+  const NotificationDetails(
+    android: AndroidNotificationDetails(
+      'apptask_channel',
+      'AppTask Recordatorios',
+      channelDescription: 'Notificaciones para tus tareas pendientes',
+      importance: Importance.max,
+      priority: Priority.high,
+    ),
+  ),
+  uiLocalNotificationDateInterpretation:
+      UILocalNotificationDateInterpretation.absoluteTime,
+  matchDateTimeComponents: DateTimeComponents.dateAndTime,
+  androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+);
+
                     }
 
                     Navigator.of(context).pop();
